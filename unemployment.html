@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Economic Impact of Unemployment Driven by AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { display: ['Space Grotesk', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --bg: #0a0e17; --card: #111827; --card-alt: #0f1520; --border: #1e2a3a;
+      --fg: #e8edf5; --muted: #64748b; --accent: #f59e0b; --accent-dim: rgba(245,158,11,0.12);
+      --emerald: #10b981; --emerald-dim: rgba(16,185,129,0.12); --red: #ef4444; --red-dim: rgba(239,68,68,0.12);
+      --orange: #f97316; --cyan: #06b6d4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--fg); font-family: 'Space Grotesk', sans-serif; overflow-x: hidden; }
+    .bg-grid {
+      background-image: linear-gradient(rgba(245,158,11,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(245,158,11,0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; transition: border-color 0.3s, box-shadow 0.3s; }
+    .card:hover { border-color: rgba(245,158,11,0.2); box-shadow: 0 0 24px rgba(245,158,11,0.04); }
+    .slider-track { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 3px; background: #1e293b; outline: none; cursor: pointer; }
+    .slider-track::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); box-shadow: 0 0 10px rgba(245,158,11,0.4); cursor: pointer; transition: transform 0.15s; }
+    .slider-track::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    .slider-track::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); box-shadow: 0 0 10px rgba(245,158,11,0.4); cursor: pointer; }
+    .btn-scenario { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--card-alt); color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Space Grotesk', sans-serif; letter-spacing: 0.02em; }
+    .btn-scenario:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .btn-scenario.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .stat-card { position: relative; overflow: hidden; }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 12px 12px 0 0; }
+    .stat-card.amber::before { background: linear-gradient(90deg, var(--accent), transparent); }
+    .stat-card.emerald::before { background: linear-gradient(90deg, var(--emerald), transparent); }
+    .stat-card.red::before { background: linear-gradient(90deg, var(--red), transparent); }
+    .stat-card.blue::before { background: linear-gradient(90deg, #3b82f6, transparent); }
+    .table-row { transition: background 0.2s; } .table-row:hover { background: rgba(245,158,11,0.04); }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .anim-in { animation: fadeUp 0.5s ease-out both; } .anim-d1 { animation-delay: 0.05s; } .anim-d2 { animation-delay: 0.1s; } .anim-d3 { animation-delay: 0.15s; } .anim-d4 { animation-delay: 0.2s; } .anim-d5 { animation-delay: 0.25s; }
+    @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 8px rgba(245,158,11,0.2); } 50% { box-shadow: 0 0 20px rgba(245,158,11,0.4); } }
+    .glow-pulse { animation: pulse-glow 3s ease-in-out infinite; }
+    .toast { padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 500; animation: toastIn 0.3s ease-out; min-width: 220px; border: 1px solid var(--border); background: var(--card); color: var(--fg); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+    .toast-exit { animation: toastOut 0.3s ease-in forwards; }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes toastOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(40px); } }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .modal-content { background: var(--card); border: 1px solid var(--border); border-radius: 16px; max-width: 650px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 32px; transform: translateY(20px); transition: transform 0.3s; }
+    .modal-overlay.open .modal-content { transform: translateY(0); }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: var(--bg); } ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; } ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    @media (max-width: 1024px) { .main-grid { grid-template-columns: 1fr !important; } .aside-panel { max-height: none !important; position: static !important; } }
+  </style>
+</head>
+<body>
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+  <div class="fixed inset-0 bg-grid pointer-events-none" aria-hidden="true"></div>
+  <div class="fixed top-[-200px] left-[-100px] w-[500px] h-[500px] rounded-full pointer-events-none" style="background: radial-gradient(circle, rgba(245,158,11,0.06), transparent 70%);" aria-hidden="true"></div>
+
+  <header class="relative z-10 px-6 pt-6 pb-2 max-w-[1600px] mx-auto anim-in">
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold tracking-tight" style="color: var(--accent);">
+          <i class="fa-solid fa-robot mr-2 text-2xl"></i>Economic Impact of Unemployment Driven by AI
+        </h1>
+        <p class="text-sm mt-1" style="color: var(--muted);">USA 2014–2034 Forecast: Labor Disruption & Revenue Cascade</p>
+      </div>
+      <button onclick="openModal()" class="flex items-center gap-2 text-sm px-4 py-2 rounded-lg border transition-all" style="border-color: var(--border); color: var(--muted);" onmouseover="this.style.borderColor='var(--accent)'; this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--muted)'">
+        <i class="fa-solid fa-circle-info"></i> Model Explanation
+      </button>
+    </div>
+  </header>
+
+  <main class="relative z-10 main-grid px-6 pb-8 max-w-[1600px] mx-auto mt-4" style="display: grid; grid-template-columns: 330px 1fr; gap: 24px;">
+    <aside class="aside-panel space-y-4" style="max-height: calc(100vh - 120px); overflow-y: auto; position: sticky; top: 16px;">
+      <div class="card p-5 anim-in anim-d1">
+        <h2 class="text-xs font-bold uppercase tracking-widest mb-3" style="color: var(--muted);">Scenario Presets</h2>
+        <div class="grid grid-cols-2 gap-2">
+          <button class="btn-scenario" data-scenario="goldilocks"><i class="fa-solid fa-sun mr-1"></i>Goldilocks</button>
+          <button class="btn-scenario" data-scenario="recession"><i class="fa-solid fa-arrow-trend-down mr-1"></i>Recession</button>
+          <button class="btn-scenario" data-scenario="stagflation"><i class="fa-solid fa-fire mr-1"></i>Stagflation</button>
+          <button class="btn-scenario" data-scenario="boom"><i class="fa-solid fa-rocket mr-1"></i>Boom</button>
+          <button class="btn-scenario col-span-2" data-scenario="depression"><i class="fa-solid fa-skull-crossbones mr-1"></i>Great Depression (30%)</button>
+        </div>
+        <button class="btn-scenario w-full mt-2" data-scenario="reset"><i class="fa-solid fa-rotate-left mr-1"></i>Reset to Baseline Forecast</button>
+      </div>
+
+      <div class="card p-5 space-y-5 anim-in anim-d2">
+        <h2 class="text-xs font-bold uppercase tracking-widest" style="color: var(--muted);">Future Simulation Parameters (2026+)</h2>
+        <div>
+          <div class="flex justify-between items-baseline mb-2"><label class="text-sm font-semibold" for="slider-unemp">AI-Driven Unemployment Override</label><span id="val-unemp" class="font-mono text-sm font-bold" style="color: var(--accent);">Baseline</span></div>
+          <input type="range" id="slider-unemp" class="slider-track" min="-1" max="70" step="0.5" value="-1" aria-label="Unemployment override">
+          <div class="flex justify-between text-xs mt-1" style="color: var(--muted);"><span>Baseline</span><span>70%</span></div>
+        </div>
+        <div>
+          <div class="flex justify-between items-baseline mb-2"><label class="text-sm font-semibold" for="slider-mpc">Consumer Spending (MPC)</label><span id="val-mpc" class="font-mono text-sm font-bold" style="color: var(--accent);">0.85</span></div>
+          <input type="range" id="slider-mpc" class="slider-track" min="0.3" max="0.95" step="0.05" value="0.85" aria-label="MPC">
+          <div class="flex justify-between text-xs mt-1" style="color: var(--muted);"><span>0.3 (Savers)</span><span>0.95 (Paycheck-to-paycheck)</span></div>
+        </div>
+        <div>
+          <div class="flex justify-between items-baseline mb-2"><label class="text-sm font-semibold" for="slider-cascade">Economic Ripple Multiplier</label><span id="val-cascade" class="font-mono text-sm font-bold" style="color: var(--accent);">2.5x</span></div>
+          <input type="range" id="slider-cascade" class="slider-track" min="1.0" max="5.0" step="0.1" value="2.5" aria-label="Cascade">
+          <div class="flex justify-between text-xs mt-1" style="color: var(--muted);"><span>1.0x (Isolated)</span><span>5.0x (Deep)</span></div>
+        </div>
+        <div>
+          <div class="flex justify-between items-baseline mb-2"><label class="text-sm font-semibold" for="slider-confidence">Consumer Confidence Sensitivity</label><span id="val-confidence" class="font-mono text-sm font-bold" style="color: var(--accent);">1.0x</span></div>
+          <input type="range" id="slider-confidence" class="slider-track" min="0" max="3" step="0.1" value="1" aria-label="Confidence sensitivity">
+          <div class="flex justify-between text-xs mt-1" style="color: var(--muted);"><span>0x (Stoic)</span><span>3.0x (Panic)</span></div>
+        </div>
+        <div>
+          <div class="flex justify-between items-baseline mb-2"><label class="text-sm font-semibold" for="slider-birth">Birth Rate / Demographic Drag</label><span id="val-birth" class="font-mono text-sm font-bold" style="color: var(--accent);">1.0x</span></div>
+          <input type="range" id="slider-birth" class="slider-track" min="0" max="3" step="0.1" value="1" aria-label="Birth rate drag">
+          <div class="flex justify-between text-xs mt-1" style="color: var(--muted);"><span>0x (No effect)</span><span>3.0x (Severe drag)</span></div>
+        </div>
+        <div>
+          <div class="flex justify-between items-baseline mb-2"><label class="text-sm font-semibold" for="slider-inflation">Inflation / CPI Override</label><span id="val-inflation" class="font-mono text-sm font-bold" style="color: var(--accent);">1.0x (Dynamic)</span></div>
+          <input type="range" id="slider-inflation" class="slider-track" min="0.5" max="2" step="0.05" value="1" aria-label="Inflation multiplier">
+          <div class="flex justify-between text-xs mt-1" style="color: var(--muted);"><span>0.5x (Force Deflation)</span><span>2.0x (Force High Infl.)</span></div>
+        </div>
+        <div>
+          <div class="flex justify-between items-baseline mb-2"><label class="text-sm font-semibold" for="slider-fed">Fed Funds Rate Override</label><span id="val-fed" class="font-mono text-sm font-bold" style="color: var(--accent);">Baseline</span></div>
+          <input type="range" id="slider-fed" class="slider-track" min="-1" max="8" step="0.25" value="-1" aria-label="Fed rate override">
+          <div class="flex justify-between text-xs mt-1" style="color: var(--muted);"><span>Baseline</span><span>8%</span></div>
+        </div>
+      </div>
+      
+      <div class="card p-5 anim-in anim-d3">
+        <h2 class="text-xs font-bold uppercase tracking-widest mb-2" style="color: var(--muted);">Model Notes</h2>
+        <p class="text-xs leading-relaxed" style="color: var(--muted);">
+          <strong>2026 Boundary:</strong> Sliders only affect the forecast from 2026 onward. 2014–2025 remains fixed to historical/baseline data.<br><br>
+          <strong>Dynamic CPI:</strong> High unemployment automatically suppresses future CPI (Phillips curve), in addition to the manual override slider.
+        </p>
+      </div>
+    </aside>
+
+    <div class="space-y-5">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="card stat-card amber p-5 anim-in anim-d1"><div class="text-xs font-semibold uppercase tracking-wider mb-1" style="color: var(--muted);">Total Forecast Delta</div><div id="stat-delta" class="text-2xl font-bold font-mono" style="color: var(--accent);">$0B</div><div class="text-xs mt-1" style="color: var(--muted);">2026–2034 vs baseline</div></div>
+        <div class="card stat-card emerald p-5 anim-in anim-d2"><div class="text-xs font-semibold uppercase tracking-wider mb-1" style="color: var(--muted);">Avg Profit Impact</div><div id="stat-impact" class="text-2xl font-bold font-mono" style="color: var(--emerald);">0.0%</div><div class="text-xs mt-1" style="color: var(--muted);">average yearly change</div></div>
+        <div class="card stat-card red p-5 anim-in anim-d3"><div class="text-xs font-semibold uppercase tracking-wider mb-1" style="color: var(--muted);">Unemployment Correlation</div><div id="stat-corr" class="text-2xl font-bold font-mono" style="color: var(--red);">r = 0.00</div><div class="text-xs mt-1" style="color: var(--muted);">with corporate profits</div></div>
+        <div class="card stat-card blue p-5 anim-in anim-d4"><div class="text-xs font-semibold uppercase tracking-wider mb-1" style="color: var(--muted);">Economic Health Index</div><div id="stat-health" class="text-2xl font-bold font-mono" style="color: #3b82f6;">50</div><div class="text-xs mt-1" style="color: var(--muted);">0 (crisis) to 100 (boom)</div></div>
+      </div>
+
+      <div class="card p-5 anim-in anim-d3 glow-pulse">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">Corporate Profits Over Time</h2>
+          <select id="view-mode" class="text-xs px-3 py-1.5 rounded-lg border font-semibold" style="background: var(--card-alt); border-color: var(--border); color: var(--fg); font-family: 'Space Grotesk';">
+            <option value="nominal">Nominal ($B)</option>
+            <option value="real">Real (CPI-Adjusted $B)</option>
+          </select>
+        </div>
+        <div style="height: 400px; position: relative;"><canvas id="main-chart"></canvas></div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="card p-5 anim-in anim-d4">
+          <h2 class="text-sm font-bold mb-3">Consumer Price Index (CPI) Forecast</h2>
+          <div style="height: 280px; position: relative;"><canvas id="cpi-chart"></canvas></div>
+        </div>
+        <div class="card p-5 anim-in anim-d5">
+          <h2 class="text-sm font-bold mb-3">Spending Cascade Impact (2034)</h2>
+          <div style="height: 280px; position: relative;"><canvas id="impact-chart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card p-5 anim-in anim-d5">
+        <h2 class="text-sm font-bold mb-3">Year-by-Year Comparison</h2>
+        <div class="overflow-x-auto" style="max-height: 420px; overflow-y: auto;">
+          <table class="w-full text-sm">
+            <thead style="position: sticky; top: 0; background: var(--card); z-index: 10;">
+              <tr style="border-bottom: 1px solid var(--border);">
+                <th class="text-left py-2 px-3 text-xs font-bold uppercase" style="color: var(--muted);">Year</th>
+                <th class="text-right py-2 px-3 text-xs font-bold uppercase" style="color: var(--muted);">Base Unemp.</th>
+                <th class="text-right py-2 px-3 text-xs font-bold uppercase" style="color: var(--muted);">Sim. Unemp.</th>
+                <th class="text-right py-2 px-3 text-xs font-bold uppercase" style="color: var(--muted);">Base Profits</th>
+                <th class="text-right py-2 px-3 text-xs font-bold uppercase" style="color: var(--muted);">Sim. Profits</th>
+                <th class="text-right py-2 px-3 text-xs font-bold uppercase" style="color: var(--muted);">Change</th>
+                <th class="text-right py-2 px-3 text-xs font-bold uppercase" style="color: var(--muted);">Sim. CPI</th>
+              </tr>
+            </thead>
+            <tbody id="data-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal-content">
+      <div class="flex justify-between items-start mb-4">
+        <h2 class="text-xl font-bold" style="color: var(--accent);">Economic Cascade Model</h2>
+        <button onclick="closeModal()" class="text-lg px-2" style="color: var(--muted);"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-4 text-sm leading-relaxed" style="color: #94a3b8;">
+        <div><h3 class="font-semibold text-base mb-1" style="color: var(--fg);">2026 Forecast Boundary</h3><p>Simulation parameters only affect the years 2026 through 2034. Historical and near-term baseline data (2014–2025) remains fixed, creating a realistic divergence point in the future.</p></div>
+        <div><h3 class="font-semibold text-base mb-1" style="color: var(--fg);">Dynamic CPI (Phillips Curve)</h3><p>Inflation is now modeled dynamically. If unemployment rises significantly, consumer demand drops, causing inflation to cool (lower CPI). This is calculated automatically, but can be manually scaled further using the Inflation Override slider.</p></div>
+        <div><h3 class="font-semibold text-base mb-1" style="color: var(--fg);">Consumer Confidence Shock</h3><p>Rising unemployment causes a rapid, non-linear drop in consumer confidence. Even employed citizens tighten spending preemptively. The sensitivity slider controls how sharply confidence collapses per percentage point of unemployment increase.</p></div>
+        <div><h3 class="font-semibold text-base mb-1" style="color: var(--fg);">Birth Rate & Demographic Drag</h3><p>Economic uncertainty suppresses birth rates. While babies don't become workers overnight, a declining birth rate immediately impacts child-related industries and signals long-term structural drag. The model applies a compounding reduction to GDP and consumer base size that worsens over the 10-year forecast horizon.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DATA = [
+      { year: 2014, unemployment: 6.2, profits: 2100, cpi: 236.7, gdp: 17.5, fedRate: 0.25, projected: false },
+      { year: 2015, unemployment: 5.3, profits: 2165, cpi: 237.0, gdp: 18.2, fedRate: 0.25, projected: false },
+      { year: 2016, unemployment: 4.9, profits: 2205, cpi: 240.0, gdp: 18.7, fedRate: 0.50, projected: false },
+      { year: 2017, unemployment: 4.4, profits: 2350, cpi: 245.1, gdp: 19.5, fedRate: 1.00, projected: false },
+      { year: 2018, unemployment: 3.9, profits: 2580, cpi: 251.1, gdp: 20.5, fedRate: 1.75, projected: false },
+      { year: 2019, unemployment: 3.7, profits: 2650, cpi: 255.7, gdp: 21.4, fedRate: 2.25, projected: false },
+      { year: 2020, unemployment: 8.1, profits: 2240, cpi: 258.8, gdp: 21.0, fedRate: 0.25, projected: false },
+      { year: 2021, unemployment: 5.4, profits: 2810, cpi: 270.9, gdp: 23.3, fedRate: 0.25, projected: false },
+      { year: 2022, unemployment: 3.6, profits: 2950, cpi: 292.7, gdp: 25.5, fedRate: 2.50, projected: false },
+      { year: 2023, unemployment: 3.6, profits: 2880, cpi: 304.7, gdp: 27.4, fedRate: 5.25, projected: false },
+      { year: 2024, unemployment: 4.0, profits: 3050, cpi: 314.0, gdp: 28.8, fedRate: 4.75, projected: false },
+      { year: 2025, unemployment: 4.2, profits: 3166, cpi: 322.5, gdp: 29.8, fedRate: 4.25, projected: true },
+      { year: 2026, unemployment: 4.3, profits: 3287, cpi: 329.0, gdp: 30.8, fedRate: 3.75, projected: true },
+      { year: 2027, unemployment: 4.4, profits: 3412, cpi: 335.5, gdp: 31.9, fedRate: 3.25, projected: true },
+      { year: 2028, unemployment: 4.4, profits: 3540, cpi: 342.0, gdp: 33.0, fedRate: 3.00, projected: true },
+      { year: 2029, unemployment: 4.3, profits: 3670, cpi: 348.8, gdp: 34.2, fedRate: 2.75, projected: true },
+      { year: 2030, unemployment: 4.3, profits: 3805, cpi: 355.8, gdp: 35.4, fedRate: 2.75, projected: true },
+      { year: 2031, unemployment: 4.4, profits: 3945, cpi: 362.9, gdp: 36.7, fedRate: 2.75, projected: true },
+      { year: 2032, unemployment: 4.4, profits: 4090, cpi: 370.2, gdp: 38.0, fedRate: 2.75, projected: true },
+      { year: 2033, unemployment: 4.4, profits: 4240, cpi: 377.6, gdp: 39.4, fedRate: 2.75, projected: true },
+      { year: 2034, unemployment: 4.5, profits: 4395, cpi: 385.1, gdp: 40.8, fedRate: 2.75, projected: true }
+    ];
+
+    const params = {
+      unempOverride: -1, mpc: 0.85, cascade: 2.5, confidenceSens: 1.0, birthDrag: 1.0,
+      inflationMult: 1.0, fedRate: -1
+    };
+
+    const scenarios = {
+      goldilocks:  { unempOverride: 3.0,  mpc: 0.70, cascade: 1.5, confidenceSens: 0.5, birthDrag: 0.5, inflationMult: 1.05, fedRate: 2.5 },
+      recession:   { unempOverride: 12.0, mpc: 0.90, cascade: 3.0, confidenceSens: 2.0, birthDrag: 1.5, inflationMult: 0.8,  fedRate: 0.5 },
+      stagflation: { unempOverride: 15.0, mpc: 0.85, cascade: 2.5, confidenceSens: 1.5, birthDrag: 1.0, inflationMult: 1.6,  fedRate: 6.0 },
+      boom:        { unempOverride: 2.0,  mpc: 0.65, cascade: 1.2, confidenceSens: 0.2, birthDrag: 0.0, inflationMult: 1.15, fedRate: 3.0 },
+      depression:  { unempOverride: 30.0, mpc: 0.95, cascade: 4.0, confidenceSens: 3.0, birthDrag: 3.0, inflationMult: 0.6,  fedRate: 0.25 },
+      reset:       { unempOverride: -1,   mpc: 0.85, cascade: 2.5, confidenceSens: 1.0, birthDrag: 1.0, inflationMult: 1.0,  fedRate: -1 }
+    };
+
+    function simulate() {
+      return DATA.map(d => {
+        const isFuture = d.year >= 2026;
+        const adjUnemp = isFuture && params.unempOverride >= 0 ? params.unempOverride : d.unemployment;
+        const unempDelta = isFuture ? adjUnemp - d.unemployment : 0;
+
+        // 1. Direct Consumer Spending (MPC)
+        const directSpendingLoss = unempDelta * 0.01 * params.mpc;
+        const directFactor = Math.exp(-directSpendingLoss);
+
+        // 2. Indirect Ripple (B2B)
+        const rippleFactor = Math.exp(-directSpendingLoss * (params.cascade - 1));
+
+        // 3. Consumer Confidence Shock (Non-linear drop)
+        const confidenceFactor = Math.exp(-0.05 * Math.pow(Math.max(0, unempDelta), 1.5) * params.confidenceSens);
+
+        // 4. Birth Rate Demographic Drag (Compounds over time)
+        const yearsElapsed = Math.max(0, d.year - 2026);
+        const birthFactor = Math.exp(-0.005 * Math.max(0, unempDelta) * params.birthDrag * yearsElapsed);
+
+        // 5. Dynamic CPI (Phillips Curve) - Unemp suppresses inflation
+        const phillipsEffect = Math.exp(-0.03 * Math.max(0, unempDelta)); 
+        const simCPI = isFuture ? d.cpi * phillipsEffect * params.inflationMult : d.cpi;
+        const inflFactor = isFuture ? (simCPI / d.cpi) : 1; // Nominal scaling factor
+
+        // 6. Interest Rate
+        const effectiveRate = isFuture && params.fedRate >= 0 ? params.fedRate : d.fedRate;
+        const fedDelta = isFuture ? effectiveRate - d.fedRate : 0;
+        const interestFactor = 1 - (0.025 * fedDelta);
+
+        // Combine Factors
+        const simProfits = isFuture ? Math.max(0, d.profits * directFactor * rippleFactor * confidenceFactor * birthFactor * inflFactor * interestFactor) : d.profits;
+        
+        const baseCPI = DATA[0].cpi;
+        const realHistProfits = (d.profits / d.cpi) * baseCPI;
+        const realSimProfits = (simProfits / simCPI) * baseCPI;
+
+        return {
+          year: d.year, projected: d.projected, isFuture,
+          histUnemp: d.unemployment, adjUnemp,
+          histProfits: d.profits, simProfits, realHistProfits, realSimProfits,
+          histCPI: d.cpi, simCPI,
+          directFactor: isFuture ? directFactor : 1,
+          rippleFactor: isFuture ? rippleFactor : 1,
+          confidenceFactor: isFuture ? confidenceFactor : 1,
+          birthFactor: isFuture ? birthFactor : 1,
+          inflFactor: isFuture ? inflFactor : 1,
+          interestFactor: isFuture ? interestFactor : 1
+        };
+      });
+    }
+
+    function pearsonCorrelation(x, y) {
+      const n = x.length; if (n < 2) return 0;
+      const mx = x.reduce((a, b) => a + b, 0) / n, my = y.reduce((a, b) => a + b, 0) / n;
+      let num = 0, dx = 0, dy = 0;
+      for (let i = 0; i < n; i++) { const xi = x[i] - mx, yi = y[i] - my; num += xi * yi; dx += xi * xi; dy += yi * yi; }
+      const den = Math.sqrt(dx * dy); return den === 0 ? 0 : num / den;
+    }
+
+    let mainChart, cpiChart, impactChart;
+    const chartColors = {
+      amber: '#f59e0b', amberFill: 'rgba(245,158,11,0.08)', emerald: '#10b981', emeraldFill: 'rgba(16,185,129,0.15)',
+      redFill: 'rgba(239,68,68,0.15)', orange: '#f97316', cyan: '#06b6d4', cyanFill: 'rgba(6,182,212,0.15)',
+      grid: '#1a2332', tick: '#475569', tooltip: '#1e293b'
+    };
+
+    const projectionLinePlugin = {
+      id: 'projectionLine',
+      afterDraw(chart) {
+        const xScale = chart.scales.x; if (!xScale) return;
+        const labels = chart.data.labels;
+        const idx2025 = labels.indexOf(2025);
+        const idx2026 = labels.indexOf(2026);
+        if (idx2025 < 0 || idx2026 < 0) return;
+        const midX = (xScale.getPixelForValue(idx2025) + xScale.getPixelForValue(idx2026)) / 2;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.setLineDash([6, 4]); ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(midX, chart.chartArea.top); ctx.lineTo(midX, chart.chartArea.bottom); ctx.stroke();
+        ctx.setLineDash([]); ctx.fillStyle = '#94a3b8'; ctx.font = 'bold 10px Space Grotesk'; ctx.textAlign = 'center';
+        ctx.fillText('Simulation Fork (2026)', midX, chart.chartArea.top - 6);
+        ctx.restore();
+      }
+    };
+    Chart.register(projectionLinePlugin);
+
+    function createMainChart() {
+      const ctx = document.getElementById('main-chart').getContext('2d');
+      const results = simulate();
+      mainChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: results.map(r => r.year),
+          datasets: [
+            { label: 'Baseline Profits', data: results.map(r => r.histProfits), borderColor: chartColors.amber, backgroundColor: chartColors.amberFill, borderWidth: 2.5, pointRadius: results.map(r => r.isFuture ? 2 : 4), pointBackgroundColor: chartColors.amber, pointBorderColor: '#0a0e17', pointBorderWidth: 2, fill: false, tension: 0.3, order: 1 },
+            { label: 'Simulated Profits', data: results.map(r => r.simProfits), borderColor: chartColors.emerald, backgroundColor: chartColors.emeraldFill, borderWidth: 2.5, pointRadius: results.map(r => r.isFuture ? 3 : 0), pointBackgroundColor: chartColors.emerald, pointBorderColor: '#0a0e17', pointBorderWidth: 2, fill: { target: 0, above: chartColors.emeraldFill, below: chartColors.redFill }, tension: 0.3, order: 2 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { labels: { color: '#94a3b8', font: { family: 'Space Grotesk', size: 12 }, usePointStyle: true } }, tooltip: { backgroundColor: chartColors.tooltip, titleColor: '#f1f5f9', bodyColor: '#94a3b8', borderColor: '#334155', borderWidth: 1, titleFont: { family: 'Space Grotesk', weight: '600' }, bodyFont: { family: 'JetBrains Mono', size: 12 }, padding: 12, cornerRadius: 8, callbacks: { label: ctx => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(0)}B` } } },
+          scales: { x: { ticks: { color: chartColors.tick, font: { family: 'JetBrains Mono', size: 11 }, maxTicksLimit: 11 }, grid: { color: chartColors.grid } }, y: { ticks: { color: chartColors.tick, font: { family: 'JetBrains Mono', size: 11 }, callback: v => '$' + v + 'B' }, grid: { color: chartColors.grid }, beginAtZero: true } }
+        }
+      });
+    }
+
+    function createCPIChart() {
+      const ctx = document.getElementById('cpi-chart').getContext('2d');
+      const results = simulate();
+      cpiChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: results.map(r => r.year),
+          datasets: [
+            { label: 'Baseline CPI', data: results.map(r => r.histCPI), borderColor: chartColors.cyan, backgroundColor: 'rgba(6,182,212,0.08)', borderWidth: 2, pointRadius: results.map(r => r.isFuture ? 2 : 3), fill: false, tension: 0.3 },
+            { label: 'Simulated CPI', data: results.map(r => r.simCPI), borderColor: chartColors.orange, borderWidth: 2, borderDash: results.map(r => r.isFuture ? [] : [0]), pointRadius: results.map(r => r.isFuture ? 3 : 0), fill: { target: 0, above: 'rgba(249,115,22,0.1)', below: 'rgba(6,182,212,0.1)' }, tension: 0.3 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { labels: { color: '#94a3b8', font: { family: 'Space Grotesk', size: 11 }, usePointStyle: true } }, tooltip: { backgroundColor: chartColors.tooltip, titleColor: '#f1f5f9', bodyColor: '#94a3b8', borderColor: '#334155', borderWidth: 1, bodyFont: { family: 'JetBrains Mono', size: 11 }, cornerRadius: 8, callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}` } } },
+          scales: { x: { ticks: { color: chartColors.tick, font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 11 }, grid: { color: chartColors.grid } }, y: { title: { display: true, text: 'CPI-U Index', color: '#64748b', font: { family: 'Space Grotesk', size: 11 } }, ticks: { color: chartColors.tick, font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: chartColors.grid } } }
+        }
+      });
+    }
+
+    function createImpactChart() {
+      const ctx = document.getElementById('impact-chart').getContext('2d');
+      impactChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Direct Spending', 'Ripple Drop', 'Confidence Shock', 'Demographic Drag', 'CPI Effect', 'Interest Rate', 'Total Combined'],
+          datasets: [{ label: 'Impact (%)', data: [0,0,0,0,0,0,0], backgroundColor: ['rgba(239,68,68,0.6)','rgba(249,115,22,0.6)','rgba(245,158,11,0.6)','rgba(168,85,247,0.6)','rgba(6,182,212,0.6)','rgba(239,68,68,0.6)','rgba(245,158,11,0.6)'], borderColor: ['#ef4444','#f97316','#f59e0b','#a855f7','#06b6d4','#ef4444','#f59e0b'], borderWidth: 1.5, borderRadius: 4, barThickness: 16 }]
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { backgroundColor: chartColors.tooltip, titleColor: '#f1f5f9', bodyColor: '#94a3b8', borderColor: '#334155', borderWidth: 1, bodyFont: { family: 'JetBrains Mono', size: 12 }, cornerRadius: 8, callbacks: { label: ctx => `${ctx.parsed.x >= 0 ? '+' : ''}${ctx.parsed.x.toFixed(2)}%` } } },
+          scales: { x: { ticks: { color: chartColors.tick, font: { family: 'JetBrains Mono', size: 10 }, callback: v => v + '%' }, grid: { color: chartColors.grid } }, y: { ticks: { color: '#94a3b8', font: { family: 'Space Grotesk', size: 10 } }, grid: { display: false } } }
+        }
+      });
+    }
+
+    function updateAll() {
+      const results = simulate();
+      const viewMode = document.getElementById('view-mode').value;
+
+      if (viewMode === 'real') {
+        mainChart.data.datasets[0].data = results.map(r => r.realHistProfits);
+        mainChart.data.datasets[1].data = results.map(r => r.realSimProfits);
+      } else {
+        mainChart.data.datasets[0].data = results.map(r => r.histProfits);
+        mainChart.data.datasets[1].data = results.map(r => r.simProfits);
+      }
+      mainChart.update('none');
+
+      cpiChart.data.datasets[0].data = results.map(r => r.histCPI);
+      cpiChart.data.datasets[1].data = results.map(r => r.simCPI);
+      cpiChart.update('none');
+
+      const latest = results[results.length - 1];
+      const impFactors = [
+        (latest.directFactor - 1) * 100, (latest.rippleFactor - 1) * 100, (latest.confidenceFactor - 1) * 100,
+        (latest.birthFactor - 1) * 100, (latest.inflFactor - 1) * 100, (latest.interestFactor - 1) * 100,
+        ((latest.directFactor * latest.rippleFactor * latest.confidenceFactor * latest.birthFactor * latest.inflFactor * latest.interestFactor) - 1) * 100
+      ];
+      impactChart.data.datasets[0].data = impFactors;
+      impactChart.update('none');
+
+      const futureResults = results.filter(r => r.isFuture);
+      const histTotal = futureResults.reduce((a, r) => a + r.histProfits, 0);
+      const simTotal = futureResults.reduce((a, r) => a + r.simProfits, 0);
+      const totalDelta = simTotal - histTotal;
+      const deltaEl = document.getElementById('stat-delta');
+      deltaEl.textContent = (totalDelta >= 0 ? '+' : '') + '$' + Math.round(totalDelta).toLocaleString() + 'B';
+      deltaEl.style.color = totalDelta >= 0 ? 'var(--emerald)' : 'var(--red)';
+
+      const avgImpact = futureResults.reduce((a, r) => a + ((r.simProfits - r.histProfits) / r.histProfits * 100), 0) / futureResults.length;
+      const impactEl = document.getElementById('stat-impact');
+      impactEl.textContent = (avgImpact >= 0 ? '+' : '') + avgImpact.toFixed(1) + '%';
+      impactEl.style.color = avgImpact >= 0 ? 'var(--emerald)' : 'var(--red)';
+
+      const corr = pearsonCorrelation(futureResults.map(r => r.adjUnemp), futureResults.map(r => r.simProfits));
+      const corrEl = document.getElementById('stat-corr');
+      corrEl.textContent = 'r = ' + corr.toFixed(2);
+      corrEl.style.color = corr < -0.3 ? 'var(--red)' : corr > 0.3 ? 'var(--emerald)' : 'var(--accent)';
+
+      const avgAdjUnemp = futureResults.reduce((a, r) => a + r.adjUnemp, 0) / futureResults.length;
+      const unempScore = Math.max(0, Math.min(100, 100 - Math.abs(avgAdjUnemp - 4.0) * 12));
+      const profitScore = Math.max(0, Math.min(100, 50 + avgImpact * 3));
+      const healthIdx = Math.round((unempScore + profitScore) / 2);
+      const healthEl = document.getElementById('stat-health');
+      healthEl.textContent = healthIdx;
+      healthEl.style.color = healthIdx >= 65 ? 'var(--emerald)' : healthIdx >= 40 ? 'var(--accent)' : 'var(--red)';
+
+      updateTable(results);
+    }
+
+    function updateTable(results) {
+      const tbody = document.getElementById('data-table-body');
+      tbody.innerHTML = '';
+      results.forEach(r => {
+        const change = ((r.simProfits - r.histProfits) / r.histProfits * 100);
+        const changeColor = change >= 0 ? 'var(--emerald)' : 'var(--red)';
+        const futureClass = r.isFuture ? '' : 'opacity-50';
+        const row = document.createElement('tr');
+        row.className = `table-row ${futureClass}`;
+        row.style.borderBottom = '1px solid var(--border)';
+        row.innerHTML = `
+          <td class="py-2 px-3 font-mono font-semibold">${r.year}${r.isFuture ? '' : ' *'}</td>
+          <td class="py-2 px-3 text-right font-mono">${r.histUnemp.toFixed(1)}%</td>
+          <td class="py-2 px-3 text-right font-mono" style="color: ${r.adjUnemp !== r.histUnemp ? 'var(--accent)' : 'var(--fg)'};">${r.adjUnemp.toFixed(1)}%</td>
+          <td class="py-2 px-3 text-right font-mono">$${r.histProfits.toLocaleString()}B</td>
+          <td class="py-2 px-3 text-right font-mono" style="color: ${Math.abs(change) > 0.5 ? (change > 0 ? 'var(--emerald)' : 'var(--red)') : 'var(--fg)'};">$${Math.round(r.simProfits).toLocaleString()}B</td>
+          <td class="py-2 px-3 text-right font-mono font-semibold" style="color: ${changeColor};">${r.isFuture ? (change >= 0 ? '+' : '') + change.toFixed(1) + '%' : '—'}</td>
+          <td class="py-2 px-3 text-right font-mono" style="color: var(--muted);">${r.simCPI.toFixed(1)}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function setupSliders() {
+      const sliders = {
+        'slider-unemp': { key: 'unempOverride', display: 'val-unemp', format: v => parseFloat(v) < 0 ? 'Baseline' : parseFloat(v).toFixed(1) + '%' },
+        'slider-mpc': { key: 'mpc', display: 'val-mpc', format: v => parseFloat(v).toFixed(2) },
+        'slider-cascade': { key: 'cascade', display: 'val-cascade', format: v => parseFloat(v).toFixed(1) + 'x' },
+        'slider-confidence': { key: 'confidenceSens', display: 'val-confidence', format: v => parseFloat(v).toFixed(1) + 'x' },
+        'slider-birth': { key: 'birthDrag', display: 'val-birth', format: v => parseFloat(v).toFixed(1) + 'x' },
+        'slider-inflation': { key: 'inflationMult', display: 'val-inflation', format: v => parseFloat(v).toFixed(2) + 'x (Dynamic)' },
+        'slider-fed': { key: 'fedRate', display: 'val-fed', format: v => parseFloat(v) < 0 ? 'Baseline' : parseFloat(v).toFixed(2) + '%' }
+      };
+      Object.entries(sliders).forEach(([id, cfg]) => {
+        const el = document.getElementById(id);
+        el.addEventListener('input', () => {
+          const val = parseFloat(el.value);
+          params[cfg.key] = val;
+          document.getElementById(cfg.display).textContent = cfg.format(val);
+          document.querySelectorAll('.btn-scenario').forEach(b => b.classList.remove('active'));
+          updateAll();
+        });
+      });
+    }
+
+    function setupScenarios() {
+      document.querySelectorAll('.btn-scenario').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const name = btn.dataset.scenario; const s = scenarios[name]; if (!s) return;
+          Object.assign(params, s);
+          document.getElementById('slider-unemp').value = s.unempOverride; document.getElementById('val-unemp').textContent = s.unempOverride < 0 ? 'Baseline' : s.unempOverride.toFixed(1) + '%';
+          document.getElementById('slider-mpc').value = s.mpc; document.getElementById('val-mpc').textContent = s.mpc.toFixed(2);
+          document.getElementById('slider-cascade').value = s.cascade; document.getElementById('val-cascade').textContent = s.cascade.toFixed(1) + 'x';
+          document.getElementById('slider-confidence').value = s.confidenceSens; document.getElementById('val-confidence').textContent = s.confidenceSens.toFixed(1) + 'x';
+          document.getElementById('slider-birth').value = s.birthDrag; document.getElementById('val-birth').textContent = s.birthDrag.toFixed(1) + 'x';
+          document.getElementById('slider-inflation').value = s.inflationMult; document.getElementById('val-inflation').textContent = s.inflationMult.toFixed(2) + 'x (Dynamic)';
+          document.getElementById('slider-fed').value = s.fedRate; document.getElementById('val-fed').textContent = s.fedRate < 0 ? 'Baseline' : s.fedRate.toFixed(2) + '%';
+          document.querySelectorAll('.btn-scenario').forEach(b => b.classList.remove('active')); btn.classList.add('active');
+          updateAll();
+          const labels = { goldilocks: 'Goldilocks Economy', recession: 'Recession Scenario', stagflation: 'Stagflation Scenario', boom: 'Economic Boom', depression: 'Great Depression (30% Unemp)', reset: 'Baseline Forecast' };
+          showToast(`Applied: ${labels[name] || name}`, name === 'reset' ? 'info' : 'success');
+        });
+      });
+    }
+
+    function setupViewToggle() { document.getElementById('view-mode').addEventListener('change', updateAll); }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container'); const toast = document.createElement('div'); toast.className = 'toast';
+      const icon = type === 'success' ? '<i class="fa-solid fa-check-circle mr-2" style="color: var(--emerald);"></i>' : '<i class="fa-solid fa-circle-info mr-2" style="color: var(--accent);"></i>';
+      toast.innerHTML = icon + message; container.appendChild(toast);
+      setTimeout(() => { toast.classList.add('toast-exit'); setTimeout(() => toast.remove(), 300); }, 2800);
+    }
+
+    function openModal() { document.getElementById('modal').classList.add('open'); }
+    function closeModal() { document.getElementById('modal').classList.remove('open'); }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    function init() {
+      createMainChart(); createCPIChart(); createImpactChart();
+      setupSliders(); setupScenarios(); setupViewToggle(); updateAll();
+      setTimeout(() => showToast('Simulating AI-driven unemployment impacts from 2026 onwards', 'info'), 800);
+    }
+
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
+  </script>
+</body>
+</html>
